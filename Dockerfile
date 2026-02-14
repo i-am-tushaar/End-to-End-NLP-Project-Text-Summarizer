@@ -1,6 +1,5 @@
-FROM python:3.8-slim-buster
+FROM python:3.10-slim
 
-# Prevent python from buffering logs
 ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
@@ -10,17 +9,14 @@ RUN apt-get update && apt-get install -y awscli \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy only requirements first (for Docker cache)
+# Copy requirements first (cache optimization)
 COPY requirements.txt .
 
-# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy project files
 COPY . .
 
-# Expose FastAPI port (optional but good practice)
 EXPOSE 8080
 
-# Run application
 CMD ["python", "app.py"]
