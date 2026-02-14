@@ -12,6 +12,7 @@ permissions:
   contents: read
 
 jobs:
+
 # ================= CI =================
   integration:
     name: Continuous Integration
@@ -27,7 +28,7 @@ jobs:
       - name: Run unit tests
         run: echo "Running unit tests"
 
-# ================= CD (BUILD + PUSH) =================
+# ================= BUILD + PUSH =================
   build-and-push-ecr-image:
     name: Continuous Delivery
     needs: integration
@@ -37,9 +38,15 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v3
 
-      # ✅ REQUIRED for buildx (fixes your error)
+      # ✅ REQUIRED: enables docker engine
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+
+      # ✅ IMPORTANT: ensures docker daemon ready
+      - name: Verify Docker
+        run: |
+          docker version
+          docker buildx ls
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -52,6 +59,7 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
+      # ✅ FINAL FIXED BUILD STEP
       - name: Build and Push Docker image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
@@ -59,13 +67,15 @@ jobs:
           IMAGE_TAG: latest
         run: |
           docker buildx build \
+            --file Dockerfile \
             --platform linux/amd64 \
-            -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
+            --tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG \
             --push \
             .
 
 # ================= DEPLOY =================
   Continuous-Deployment:
+    name: Continuous Deployment
     needs: build-and-push-ecr-image
     runs-on: self-hosted
 
