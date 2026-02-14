@@ -1,13 +1,26 @@
 FROM python:3.8-slim-buster
 
-RUN apt update -y && apt install awscli -y
+# Prevent python from buffering logs
+ENV PYTHONUNBUFFERED=1
+
 WORKDIR /app
 
-COPY . /app
+# Install system dependencies
+RUN apt-get update && apt-get install -y awscli \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
 
-RUN pip install -r requirements.txt
-RUN pip install --upgrade accelerate
-RUN pip uninstall -y transformers accelerate
-RUN pip install transformers accelerate
+# Copy only requirements first (for Docker cache)
+COPY requirements.txt .
 
-CMD ["python3", "app.py"]
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy project files
+COPY . .
+
+# Expose FastAPI port (optional but good practice)
+EXPOSE 8080
+
+# Run application
+CMD ["python", "app.py"]
